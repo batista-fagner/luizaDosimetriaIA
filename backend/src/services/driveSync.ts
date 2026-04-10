@@ -9,8 +9,10 @@ const FOLDER_ID = '1Ph8E2tfFJn4SiUl8QvhShX6IEKhuyA8p';
 const CREDENTIALS_PATH = path.join(__dirname, '../../credentials/google-service-account.json');
 
 function getAuthClient() {
-  const b64 = process.env.GOOGLE_SERVICE_ACCOUNT_B64;
+  let b64 = process.env.GOOGLE_SERVICE_ACCOUNT_B64;
   if (b64) {
+    // Remove quotes, whitespace, and newlines
+    b64 = b64.replace(/^"|"$/g, '').replace(/\s/g, '');
     const credentials = JSON.parse(Buffer.from(b64, 'base64').toString('utf-8'));
     return new google.auth.GoogleAuth({
       credentials,
