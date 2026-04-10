@@ -1,33 +1,31 @@
-import { loadEmbeddings, generateQueryEmbedding, EmbeddedChunk } from './embeddings';
-
-function cosineSimilarity(a: number[], b: number[]): number {
-  let dot = 0, normA = 0, normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] ** 2;
-    normB += b[i] ** 2;
-  }
-  if (normA === 0 || normB === 0) return 0;
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
-}
+import { generateQueryEmbedding, EmbeddedChunk } from './embeddings';
+import { supabase } from './supabase';
 
 export async function findRelevantChunks(
   query: string,
   topK = 5,
   minScore = 0.6
 ): Promise<EmbeddedChunk[]> {
-  const embeddings = loadEmbeddings();
-  if (embeddings.length === 0) return [];
-
   const queryEmbedding = await generateQueryEmbedding(query);
 
-  const scored = embeddings
-    .map((chunk) => ({ ...chunk, score: cosineSimilarity(queryEmbedding, chunk.embedding) }))
-    .filter((chunk) => chunk.score >= minScore)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topK);
+  const { data, error } = await supabase.rpc('match_documents', {
+    query_embedding: queryEmbedding,
+    match_threshold: minScore,
+    match_count: topK,
+  });
 
-  return scored;
+  if (error) {
+    console.error('[vectorSearch] Erro na busca:', error);
+    return [];
+  }
+
+  return (data ?? []).map((row: { source: string; chunk_index: number; text: string; similarity: number }) => ({
+    source: row.source,
+    chunkIndex: row.chunk_index,
+    text: row.text,
+    embedding: [],
+    score: row.similarity,
+  }));
 }
 
 export function buildContextFromChunks(chunks: EmbeddedChunk[]): string {

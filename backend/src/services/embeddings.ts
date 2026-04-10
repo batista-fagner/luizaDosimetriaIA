@@ -1,11 +1,8 @@
 import OpenAI from 'openai';
-import * as fs from 'fs';
-import * as path from 'path';
 import { DocumentChunk, syncDriveDocuments } from './driveSync';
+import { supabase } from './supabase';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const DATA_PATH = path.join(__dirname, '../../data/embeddings.json');
-const STATE_PATH = path.join(__dirname, '../../data/sync-state.json');
 
 export interface EmbeddedChunk extends DocumentChunk {
   embedding: number[];
@@ -19,26 +16,36 @@ async function generateEmbedding(text: string): Promise<number[]> {
   return res.data[0].embedding;
 }
 
-function loadState(): Set<string> {
-  if (!fs.existsSync(STATE_PATH)) return new Set();
-  try {
-    const state = JSON.parse(fs.readFileSync(STATE_PATH, 'utf-8'));
-    return new Set(state.processedSources || []);
-  } catch {
-    return new Set();
-  }
+async function getProcessedSources(): Promise<Set<string>> {
+  const { data, error } = await supabase.from('sync_state').select('source');
+  if (error) return new Set();
+  return new Set((data ?? []).map((r: { source: string }) => r.source));
 }
 
-function saveState(sources: Set<string>): void {
-  const dir = path.dirname(STATE_PATH);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(STATE_PATH, JSON.stringify({ processedSources: [...sources] }, null, 2));
+async function saveProcessedSource(source: string): Promise<void> {
+  await supabase.from('sync_state').upsert({ source, synced_at: new Date().toISOString() }, { onConflict: 'source' });
+}
+
+async function saveChunks(chunks: EmbeddedChunk[]): Promise<void> {
+  const rows = chunks.map((c) => ({
+    source: c.source,
+    chunk_index: c.chunkIndex,
+    text: c.text,
+    embedding: JSON.stringify(c.embedding),
+  }));
+
+  const batchSize = 50;
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize);
+    const { error } = await supabase.from('document_chunks').insert(batch);
+    if (error) throw error;
+  }
 }
 
 export async function buildEmbeddings(fileLimit?: number, incrementalOnly = false): Promise<{ total: number; sources: string[]; newChunks: number }> {
   let chunks = await syncDriveDocuments();
 
-  const processedSources = loadState();
+  const processedSources = await getProcessedSources();
   const allSources = [...new Set(chunks.map((c) => c.source))];
 
   if (fileLimit) {
@@ -48,11 +55,10 @@ export async function buildEmbeddings(fileLimit?: number, incrementalOnly = fals
   }
 
   let newChunks = chunks;
-  let newSources = new Set(allSources);
 
   if (incrementalOnly) {
     newChunks = chunks.filter((c) => !processedSources.has(c.source));
-    newSources = new Set(newChunks.map((c) => c.source));
+    const newSources = new Set(newChunks.map((c) => c.source));
     console.log(`[embeddings] Modo incremental: processando apenas ${newSources.size} arquivo(s) novos`);
     if (newChunks.length === 0) {
       console.log(`[embeddings] ℹ️ Nenhum arquivo novo encontrado`);
@@ -62,16 +68,15 @@ export async function buildEmbeddings(fileLimit?: number, incrementalOnly = fals
 
   console.log(`[embeddings] Gerando embeddings para ${newChunks.length} chunks...`);
 
-  const existingEmbeddings: EmbeddedChunk[] = incrementalOnly ? loadEmbeddings() : [];
-  const embedded: EmbeddedChunk[] = incrementalOnly ? existingEmbeddings : [];
-  const sources = incrementalOnly ? new Set(processedSources) : new Set<string>();
+  const embedded: EmbeddedChunk[] = [];
+  const newSources = new Set<string>();
 
   for (let i = 0; i < newChunks.length; i++) {
     const chunk = newChunks[i];
     try {
       const embedding = await generateEmbedding(chunk.text);
       embedded.push({ ...chunk, embedding });
-      sources.add(chunk.source);
+      newSources.add(chunk.source);
       if ((i + 1) % 10 === 0 || i === newChunks.length - 1) {
         console.log(`[embeddings] ${i + 1}/${newChunks.length}`);
       }
@@ -80,25 +85,25 @@ export async function buildEmbeddings(fileLimit?: number, incrementalOnly = fals
     }
   }
 
-  const dir = path.dirname(DATA_PATH);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(DATA_PATH, JSON.stringify(embedded, null, 2));
-  saveState(sources);
+  await saveChunks(embedded);
 
-  console.log(`[embeddings] ✅ Salvo: ${embedded.length} chunks de ${sources.size} documentos`);
+  for (const source of newSources) {
+    await saveProcessedSource(source);
+  }
 
-  return { total: embedded.length, sources: [...sources], newChunks: newChunks.length };
+  const { count } = await supabase.from('document_chunks').select('*', { count: 'exact', head: true });
+  const total = count ?? embedded.length;
+
+  console.log(`[embeddings] ✅ Salvo: ${total} chunks de ${newSources.size} documentos`);
+
+  return { total, sources: [...newSources], newChunks: newChunks.length };
 }
 
 export async function generateQueryEmbedding(text: string): Promise<number[]> {
   return generateEmbedding(text);
 }
 
-export function loadEmbeddings(): EmbeddedChunk[] {
-  if (!fs.existsSync(DATA_PATH)) return [];
-  return JSON.parse(fs.readFileSync(DATA_PATH, 'utf-8'));
-}
-
-export function hasEmbeddings(): boolean {
-  return fs.existsSync(DATA_PATH);
+export async function hasEmbeddings(): Promise<boolean> {
+  const { count } = await supabase.from('document_chunks').select('*', { count: 'exact', head: true });
+  return (count ?? 0) > 0;
 }

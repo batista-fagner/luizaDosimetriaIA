@@ -25,8 +25,9 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // GET /api/sync/status — verifica se os embeddings existem
-router.get('/status', (_req: Request, res: Response) => {
-  res.json({ ready: hasEmbeddings() });
+router.get('/status', async (_req: Request, res: Response) => {
+  const ready = await hasEmbeddings();
+  res.json({ ready });
 });
 
 export default router;
