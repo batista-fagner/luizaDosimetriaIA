@@ -14,7 +14,7 @@ interface SidebarProps {
 
 export function Sidebar({ conversations, activeId, onSelect, onNew }: SidebarProps) {
   return (
-    <aside className="w-72 bg-white border-r border-gray-200 flex flex-col h-full">
+    <div className="w-full h-full bg-white flex flex-col">
       <div className="p-4">
         <button
           onClick={onNew}
@@ -56,6 +56,6 @@ export function Sidebar({ conversations, activeId, onSelect, onNew }: SidebarPro
           ))
         )}
       </div>
-    </aside>
+    </div>
   );
 }

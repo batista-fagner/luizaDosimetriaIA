@@ -45,6 +45,7 @@ export function ChatPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Carrega conversas salvas ao entrar
   useEffect(() => {
@@ -194,19 +195,39 @@ export function ChatPage() {
     }
   };
 
+  const handleSelectConversation = (id: string) => {
+    handleSelect(id);
+    setSidebarOpen(false); // Fecha sidebar após selecionar (mobile)
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      <Header />
+      <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          conversations={conversations}
-          activeId={activeId}
-          onSelect={handleSelect}
-          onNew={handleNew}
-        />
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Overlay escuro no mobile quando sidebar está aberta */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-30 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
-        <main className="flex-1 flex flex-col overflow-hidden bg-gray-50">
+        {/* Sidebar: colapsível em mobile, sempre visível em desktop */}
+        <div
+          className={`fixed md:relative left-0 top-16 md:top-0 w-72 h-[calc(100vh-4rem)] md:h-full bg-white border-r border-gray-200 z-40 transition-transform duration-300 ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+          }`}
+        >
+          <Sidebar
+            conversations={conversations}
+            activeId={activeId}
+            onSelect={handleSelectConversation}
+            onNew={handleNew}
+          />
+        </div>
+
+        <main className="flex-1 flex flex-col overflow-hidden bg-gray-50 w-full md:w-auto">
           <ChatBox
             messages={activeConversation?.messages ?? []}
             isLoading={isLoading}

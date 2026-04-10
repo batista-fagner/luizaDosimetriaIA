@@ -2,7 +2,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { ImportModal } from '../Admin/ImportModal';
 
-export function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+export function Header({ onMenuClick }: HeaderProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const studentName = localStorage.getItem('studentName');
@@ -10,6 +14,7 @@ export function Header() {
   const isAdmin = localStorage.getItem('studentRole') === 'admin';
   const initial = (studentName || studentEmail || 'A')[0].toUpperCase();
   const [showImport, setShowImport] = useState(false);
+  const isChat = location.pathname === '/chat';
 
   function handleLogout() {
     localStorage.removeItem('studentEmail');
@@ -25,13 +30,26 @@ export function Header() {
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+        {/* Botão hamburger (mobile, só em /chat) */}
+        {isChat && (
+          <button
+            onClick={onMenuClick}
+            className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Abrir menu"
+          >
+            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
+
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-secondary rounded-md flex items-center justify-center">
             <span className="text-white font-bold text-sm">IA</span>
           </div>
-          <span className="font-semibold text-gray-900 text-lg">Dosimetria Penal</span>
+          <span className="font-semibold text-gray-900 text-lg hidden sm:inline">Dosimetria Penal</span>
         </Link>
 
         {/* Nav */}
