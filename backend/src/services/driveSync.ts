@@ -11,8 +11,8 @@ const CREDENTIALS_PATH = path.join(__dirname, '../../credentials/google-service-
 function getAuthClient() {
   let b64 = process.env.GOOGLE_SERVICE_ACCOUNT_B64;
   if (b64) {
-    // Remove quotes and all whitespace
-    b64 = b64.replace(/^"|"$/g, '').replace(/[\s\n\r\t]+/g, '');
+    // Remove quotes and keep only valid base64 characters (A-Z, a-z, 0-9, +, /, =)
+    b64 = b64.replace(/^"|"$/g, '').replace(/[^A-Za-z0-9+/=]/g, '');
     console.log('[drive] Base64 length:', b64.length);
     try {
       const decoded = Buffer.from(b64, 'base64').toString('utf-8');
