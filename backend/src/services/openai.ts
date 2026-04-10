@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { findRelevantChunks, buildContextFromChunks } from './vectorSearch';
+import { getActiveSystemPrompt } from './promptCache';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -53,7 +54,8 @@ export async function streamChatCompletion(
   const relevantChunks = await findRelevantChunks(userMessage);
   const context = buildContextFromChunks(relevantChunks);
 
-  const systemContent = context ? `${SYSTEM_PROMPT}\n\n${context}` : SYSTEM_PROMPT;
+  const systemPrompt = await getActiveSystemPrompt();
+  const systemContent = context ? `${systemPrompt}\n\n${context}` : systemPrompt;
 
   const stream = await openai.chat.completions.create({
     model: 'gpt-4o-mini',

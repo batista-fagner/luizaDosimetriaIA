@@ -1,10 +1,7 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { findRelevantChunks, buildContextFromChunks } from './vectorSearch';
-import { getActiveSystemPrompt } from './promptCache';
+import { getSystemPromptFromDB } from './supabase';
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
-
-const SYSTEM_PROMPT = `# IDENTIDADE E OBJETIVO
+// Prompt padrão (fallback caso não haja nada salvo no banco)
+export const DEFAULT_SYSTEM_PROMPT = `# IDENTIDADE E OBJETIVO
 
 Você é a **Assistente Jurídica da Dra. Luiza**, uma IA especialista em **Advocacia Criminal brasileira**. Seu papel é auxiliar estudantes e profissionais do direito com questões técnicas da área criminal, com ênfase em dosimetria penal.
 
@@ -56,7 +53,7 @@ Você responde com profundidade e precisão técnica sobre:
 - Responda brevemente, em 1 a 2 frases, de forma cordial.
 
 **Para perguntas fora do escopo:**
-- Responda com educação e clareza. Exemplo: *"Essa questão está fora da minha área de especialização. Sou especializada em advocacia criminal e não tenho condições de orientar sobre [tema mencionado] com a precisão necessária. Recomendo consultar um especialista na área."*
+- Responda com educação e clareza. Exemplo: "Essa questão está fora da minha área de especialização. Sou especializada em advocacia criminal e não tenho condições de orientar sobre [tema mencionado] com a precisão necessária. Recomendo consultar um especialista na área."
 
 ---
 
@@ -69,48 +66,17 @@ Você responde com profundidade e precisão técnica sobre:
 - Use listas com marcadores (- item) apenas para enumerações; use parágrafos para explicações.
 - Cada ideia nova começa em um novo parágrafo. Nunca junte dois conceitos distintos na mesma linha.`;
 
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
+// Cache em memória — null significa "não carregado ainda"
+let cachedPrompt: string | null = null;
+
+export function invalidatePromptCache(): void {
+  cachedPrompt = null;
 }
 
-export async function streamChatCompletion(
-  messages: ChatMessage[],
-  onChunk: (chunk: string) => void
-): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+export async function getActiveSystemPrompt(): Promise<string> {
+  if (cachedPrompt !== null) return cachedPrompt;
 
-  // Garante que o histórico começa com 'user' e alterna corretamente (requisito do Gemini)
-  const rawHistory = messages.slice(0, -1);
-  const firstUserIdx = rawHistory.findIndex((m) => m.role === 'user');
-  const validHistory = firstUserIdx >= 0 ? rawHistory.slice(firstUserIdx) : [];
-
-  const chat = model.startChat({
-    history: validHistory.map((msg) => ({
-      role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content }],
-    })),
-  });
-
-  const userMessage = messages[messages.length - 1].content;
-
-  // Busca contexto relevante nos documentos do Drive
-  const relevantChunks = await findRelevantChunks(userMessage);
-  const context = buildContextFromChunks(relevantChunks);
-  const systemPrompt = await getActiveSystemPrompt();
-  const promptWithContext = context ? `${systemPrompt}\n\n${context}` : systemPrompt;
-
-  const stream = await chat.sendMessageStream(
-    `${promptWithContext}\n\nPergunta do usuário: ${userMessage}`
-  );
-
-  let fullReply = '';
-  for await (const chunk of stream.stream) {
-    const token = chunk.text();
-    if (token) {
-      fullReply += token;
-      onChunk(token);
-    }
-  }
-  return fullReply;
+  const dbPrompt = await getSystemPromptFromDB();
+  cachedPrompt = dbPrompt ?? DEFAULT_SYSTEM_PROMPT;
+  return cachedPrompt;
 }

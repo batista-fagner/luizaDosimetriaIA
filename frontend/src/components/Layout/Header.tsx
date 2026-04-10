@@ -79,14 +79,24 @@ export function Header({ onMenuClick }: HeaderProps) {
             <span className="text-secondary font-semibold text-sm">{initial}</span>
           </div>
           {isAdmin && (
-            <button
-              onClick={() => setShowImport(true)}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-              style={{ backgroundColor: '#f0e8e3', color: '#846047' }}
-              title="Importar alunos"
-            >
-              Importar alunos
-            </button>
+            <>
+              <button
+                onClick={() => setShowImport(true)}
+                className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                style={{ backgroundColor: '#f0e8e3', color: '#846047' }}
+                title="Importar alunos"
+              >
+                Importar alunos
+              </button>
+              <Link
+                to="/admin/prompt"
+                className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                style={{ backgroundColor: '#f0e8e3', color: '#846047' }}
+                title="Configurar Prompt"
+              >
+                Prompt da IA
+              </Link>
+            </>
           )}
           <button
             onClick={handleLogout}

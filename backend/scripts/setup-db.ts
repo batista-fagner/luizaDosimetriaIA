@@ -44,6 +44,13 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at timestamptz DEFAULT now()
 );
 
+-- Configurações do sistema (ex: prompt da IA)
+CREATE TABLE IF NOT EXISTS settings (
+  key text PRIMARY KEY,
+  value text NOT NULL,
+  updated_at timestamptz DEFAULT now()
+);
+
 -- Índices
 CREATE INDEX IF NOT EXISTS usage_email_date_idx ON usage (student_email, created_at);
 CREATE INDEX IF NOT EXISTS messages_conversation_idx ON messages (conversation_id, created_at);
@@ -67,6 +74,7 @@ async function main() {
     console.log('   - Tabela: students');
     console.log('   - Tabela: usage');
     console.log('   - Tabela: messages');
+    console.log('   - Tabela: settings');
     console.log('   - Índices criados');
   } catch (err) {
     console.error('❌ Erro ao configurar banco:', err);

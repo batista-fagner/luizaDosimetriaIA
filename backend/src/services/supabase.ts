@@ -82,3 +82,22 @@ export async function getConversationMessages(conversationId: string) {
   if (error) throw error;
   return data ?? [];
 }
+
+export async function getSystemPromptFromDB(): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('settings')
+    .select('value')
+    .eq('key', 'system_prompt')
+    .single();
+
+  if (error || !data) return null;
+  return data.value;
+}
+
+export async function saveSystemPromptToDB(prompt: string): Promise<void> {
+  const { error } = await supabase.from('settings').upsert(
+    { key: 'system_prompt', value: prompt, updated_at: new Date().toISOString() },
+    { onConflict: 'key' }
+  );
+  if (error) throw error;
+}
