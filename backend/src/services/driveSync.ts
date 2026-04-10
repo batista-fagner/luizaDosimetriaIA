@@ -11,8 +11,8 @@ const CREDENTIALS_PATH = path.join(__dirname, '../../credentials/google-service-
 function getAuthClient() {
   let b64 = process.env.GOOGLE_SERVICE_ACCOUNT_B64;
   if (b64) {
-    // Remove quotes, whitespace, and newlines
-    b64 = b64.replace(/^"|"$/g, '').replace(/\s/g, '');
+    // Remove quotes and all whitespace (spaces, newlines, tabs, etc.)
+    b64 = b64.replace(/^"|"$/g, '').replace(/[\s\n\r\t]+/g, '');
     const credentials = JSON.parse(Buffer.from(b64, 'base64').toString('utf-8'));
     return new google.auth.GoogleAuth({
       credentials,
