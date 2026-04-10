@@ -47,7 +47,8 @@ ia-dosimetria/
 │   │   ├── pages/
 │   │   │   ├── HomePage.tsx             # Home com hero + card "Chat Jurídico"
 │   │   │   ├── ChatPage.tsx             # Chat com streaming SSE + histórico
-│   │   │   └── LoginPage.tsx            # Tela de login por email
+│   │   │   ├── LoginPage.tsx            # Tela de login por email
+│   │   │   └── PromptPage.tsx           # Editor de prompt da IA (admin only)
 │   │   ├── components/
 │   │   │   ├── Auth/
 │   │   │   │   └── ProtectedRoute.tsx   # Rota protegida (redireciona para login)
@@ -65,17 +66,18 @@ ia-dosimetria/
     │   │   ├── aiProvider.ts            # Abstrator de IA (Gemini ou OpenAI)
     │   │   ├── gemini.ts                # Google Gemini 2.5 Flash-Lite + streaming
     │   │   ├── openai.ts                # OpenAI GPT-4o Mini (fallback)
+    │   │   ├── promptCache.ts           # Cache em memória do system prompt + fallback padrão
     │   │   ├── driveSync.ts             # Sincroniza Google Drive, extrai PDF/DOCX/Docs
     │   │   ├── embeddings.ts            # Gera embeddings via OpenAI, salva em JSON
     │   │   ├── vectorSearch.ts          # Busca vetorial (cosine similarity)
-    │   │   └── supabase.ts              # Histórico, conversas, alunos, rate limit
+    │   │   └── supabase.ts              # Histórico, conversas, alunos, rate limit, settings
     │   ├── middleware/
     │   │   └── rateLimit.ts             # 40 consultas/dia por aluno
     │   ├── routes/
     │   │   ├── auth.ts                  # POST /api/auth/validate (login por email)
     │   │   ├── chat.ts                  # POST /api/chat (SSE streaming com RAG)
     │   │   ├── conversations.ts         # GET /api/conversations (histórico)
-    │   │   ├── admin.ts                 # POST /api/admin/import-students (CSV upload)
+    │   │   ├── admin.ts                 # import-students + GET/PUT /api/admin/prompt
     │   │   └── sync.ts                  # POST /api/sync (sincroniza Drive)
     │   └── index.ts                     # Express server + CORS
     ├── credentials/
@@ -119,6 +121,8 @@ PORT=3001
 | GET | `/api/conversations` | Lista conversas do aluno |
 | GET | `/api/conversations/:id/messages` | Carrega mensagens de uma conversa |
 | POST | `/api/admin/import-students` | Importa alunos via CSV (admin only) |
+| GET | `/api/admin/prompt` | Retorna prompt atual da IA (admin only) |
+| PUT | `/api/admin/prompt` | Salva novo prompt da IA (admin only) |
 | POST | `/api/sync` | Sincroniza Google Drive e gera embeddings |
 | GET | `/api/sync/status` | Verifica se embeddings existem |
 
@@ -246,6 +250,8 @@ curl -X POST http://localhost:3001/api/sync \
 - [x] Modal de importação com preview dos alunos e confirmação
 - [x] Histórico de conversas carregado do Supabase ao entrar
 - [x] Mensagens carregadas do banco ao selecionar conversa anterior
+- [x] **Editor de Prompt** — página `/admin/prompt` para a cliente editar o prompt da IA sem código
+- [x] Botão "Prompt da IA" no header (visível só para admins)
 
 ### Backend
 - [x] Express + CORS + TypeScript
@@ -311,6 +317,12 @@ curl -X POST http://localhost:3001/api/sync \
   - [x] Sincronização completa (reprocessa tudo)
   - [x] Sincronização incremental (apenas novos)
   - [x] Rastreamento de estado em `sync-state.json`
+- [x] **Editor de Prompt da IA:**
+  - [x] Tabela `settings` no Supabase para persistir o prompt
+  - [x] Cache em memória (`promptCache.ts`) — zero latência para os alunos
+  - [x] Endpoints `GET/PUT /api/admin/prompt` (admin only)
+  - [x] Fallback automático para prompt padrão se banco estiver vazio
+  - [x] Gemini e OpenAI usam o mesmo prompt ativo via cache
 
 ---
 
@@ -343,6 +355,7 @@ curl -X POST http://localhost:3001/api/sync \
   - Filtrar por data
   - Exportar relatório de uso
   - Estatísticas de uso
+- [x] **Editor de Prompt da IA via painel admin** — Dra. Luiza edita e salva o prompt direto pela UI
 - [x] **Migrar para Supabase pgvector** (otimização, embeddings no banco)
   - [x] Tabela `document_chunks` com extensão pgvector
   - [x] Tabela `sync_state` para rastreamento de sincronizações
@@ -373,6 +386,7 @@ curl -X POST http://localhost:3001/api/sync \
 - **Admin via role**: usuário pode ter `role: 'admin'` ou `'student'`. Simples, sem permissões granulares.
 - **Histórico local JSON + Supabase**: chat atual usa Supabase, histórico antigo em JSON ainda disponível
 - **Multer para upload CSV**: simples e nativo, sem depender de cloud storage separado
+- **Prompt editável via UI**: salvo na tabela `settings` do Supabase. Cache em memória no backend invalida automaticamente ao salvar novo prompt. Fallback para `DEFAULT_SYSTEM_PROMPT` em `promptCache.ts` se banco vazio.
 
 ## Formatação das Respostas da IA
 
@@ -482,6 +496,18 @@ Deploy automático: push em `main` → GitHub webhook → Vercel/Railway redeplo
 ---
 
 ## Logs de Mudanças
+
+### 2026-04-10 — Editor de Prompt da IA + Melhorias no Prompt
+- ✅ Prompt da IA reescrito com boas práticas (identidade, escopo, restrições, formato)
+  - Especialista em advocacia criminal (não apenas dosimetria)
+  - Seções claras: O que faz, O que não faz, Como responder, Formatação
+  - Respostas calibradas para 3-4 parágrafos (objetivo mas completo)
+- ✅ Editor de prompt no painel admin
+  - Tabela `settings` no Supabase para persistência
+  - Cache em memória no backend (zero latência para alunos)
+  - Página `/admin/prompt` com textarea + botão salvar
+  - Botão "Prompt da IA" no header para admins
+  - Fallback automático para prompt padrão se banco vazio
 
 ### 2026-04-10 — Migração para pgvector e Deploy em Produção
 - ✅ Migração de embeddings: JSON → Supabase pgvector
