@@ -45,13 +45,11 @@ export function LoginPage() {
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         <div className="text-center mb-8">
-          {/* Substituir pela imagem da advogada quando disponível */}
-          <div
-            className="w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-bold text-white"
-            style={{ backgroundColor: '#846047' }}
-          >
-            IA
-          </div>
+          <img
+            src="/Logo_dourada.svg"
+            alt="Logo"
+            className="w-32 mx-auto mb-4"
+          />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Dosimetria Penal IA</h1>
           <p className="text-gray-500 text-sm">Digite seu email de acesso para continuar</p>
         </div>
