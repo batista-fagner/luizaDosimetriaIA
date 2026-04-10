@@ -11,13 +11,21 @@ const CREDENTIALS_PATH = path.join(__dirname, '../../credentials/google-service-
 function getAuthClient() {
   let b64 = process.env.GOOGLE_SERVICE_ACCOUNT_B64;
   if (b64) {
-    // Remove quotes and all whitespace (spaces, newlines, tabs, etc.)
+    // Remove quotes and all whitespace
     b64 = b64.replace(/^"|"$/g, '').replace(/[\s\n\r\t]+/g, '');
-    const credentials = JSON.parse(Buffer.from(b64, 'base64').toString('utf-8'));
-    return new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-    });
+    console.log('[drive] Base64 length:', b64.length);
+    try {
+      const decoded = Buffer.from(b64, 'base64').toString('utf-8');
+      const credentials = JSON.parse(decoded);
+      console.log('[drive] Credentials loaded successfully');
+      return new google.auth.GoogleAuth({
+        credentials,
+        scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+      });
+    } catch (err) {
+      console.error('[drive] Failed to parse credentials:', err);
+      throw err;
+    }
   }
   return new google.auth.GoogleAuth({
     keyFile: CREDENTIALS_PATH,
