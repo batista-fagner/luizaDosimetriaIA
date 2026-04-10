@@ -9,7 +9,7 @@ Plataforma de IA especializada em dosimetria penal para uma advogada com 300 alu
 - **IA (Chat):** Google Gemini 2.5 Flash-Lite com streaming (SSE) — **gratuito**
 - **IA (Chat Fallback):** OpenAI GPT-4o Mini
 - **Embeddings:** OpenAI `text-embedding-3-small`
-- **RAG:** Google Drive + Embeddings locais (JSON)
+- **RAG:** Google Drive + Supabase pgvector (embeddings vetoriais)
 - **Database:** Supabase (PostgreSQL) — ✅ Configurado
 - **Package manager:** npm (yarn apresentou incompatibilidade com Node 22.0.0)
 
@@ -314,17 +314,24 @@ curl -X POST http://localhost:3001/api/sync \
 
 ---
 
+## URLs de Produção
+
+- **Frontend (Vercel):** https://luiza-dosimetria-ia.vercel.app
+- **Backend (Railway):** https://luizadosimetriaia-production.up.railway.app
+- **Repositório:** https://github.com/batista-fagner/luizaDosimetriaIA
+
 ## ⏳ O que falta
 
 ### Prioridade alta
-- [ ] **Imagens do cliente** (logo e background)
-  - [ ] Logo para LoginPage (placeholder aguardando)
-  - [ ] Background para LoginPage (opcional)
-  - [ ] Logo para Header (placeholder aguardando)
-- [ ] **Deploy** (Railway para backend + Vercel para frontend)
-  - [ ] Configurar variáveis de ambiente no Railway/Vercel
-  - [ ] Atualizar CORS no backend com URL de produção
-  - [ ] Atualizar API_URL no frontend para produção
+- [x] **Imagens do cliente** (logo e background)
+  - [x] Logo `Logo_dourada.svg` para LoginPage (implementada)
+  - [x] Logo para favicon
+  - [x] Logo para Header
+- [x] **Deploy** (Railway para backend + Vercel para frontend)
+  - [x] Configurar variáveis de ambiente no Railway/Vercel
+  - [x] Atualizar CORS no backend com URL de produção
+  - [x] Atualizar API_URL no frontend para produção
+  - [x] Ambiente de dev em localhost e prod em Railway/Vercel
 
 ### Prioridade média
 - [ ] **Webhook da Kiwify** (automático, não dependência crítica)
@@ -336,8 +343,11 @@ curl -X POST http://localhost:3001/api/sync \
   - Filtrar por data
   - Exportar relatório de uso
   - Estatísticas de uso
-- [ ] **Migrar para Supabase pgvector** (otimização, embeddings no banco)
-  - Embeddings em JSON funcionam bem, mas pgvector seria melhor para escala
+- [x] **Migrar para Supabase pgvector** (otimização, embeddings no banco)
+  - [x] Tabela `document_chunks` com extensão pgvector
+  - [x] Tabela `sync_state` para rastreamento de sincronizações
+  - [x] Função SQL `match_documents()` para busca vetorial via pgvector
+  - [x] 82 chunks de 5 documentos sincronizados e operacionais
 
 ### Prioridade baixa
 - [ ] **Webhook para sincronização automática do Drive** (caso novos docs sejam adicionados)
@@ -353,10 +363,10 @@ curl -X POST http://localhost:3001/api/sync \
 - **SSE** (não WebSocket): mais simples para streaming unidirecional (servidor → cliente)
 - **Google Gemini** (default) **vs OpenAI** (fallback): Gemini é gratuito no free tier (1.500 req/min), OpenAI é fallback garantido
 - **PDF Parse v1.1.1** (não v2): v2 tem incompatibilidade com Node (DOMMatrix)
-- **Embeddings locais (JSON)** — Armazenamento simples. Permite sincronização incremental via `sync-state.json`. Migração para Supabase pgvector depois.
-- **Busca vetorial manual** (cosine similarity): suficiente para este volume, sem depender de banco vetorial
-- **Sincronização incremental**: só reprocessa novos arquivos (economia de tokens/custos)
-- **RAG via Supabase pgvector**: planejado para depois, por enquanto embeddings em JSON
+- **Embeddings em Supabase pgvector** — Armazenamento vetorial nativo. Permite sincronização incremental com rastreamento em `sync_state`. Escalável para milhares de documentos.
+- **Busca vetorial via pgvector**: extensão nativa do PostgreSQL com operador `<=>` (cosine distance)
+- **Sincronização incremental**: rastreia arquivos processados em `sync_state`, reprocessa apenas novos (economia de tokens/custos)
+- **RAG via Supabase pgvector**: implementado e operacional. Credenciais do Google armazenadas como variável de ambiente (base64) no Railway
 - **Autenticação por email**: simples (sem OAuth), validado contra tabela `students` no Supabase. Sem verificação de 2FA.
 - **CSV em vez de Webhook Kiwify**: mais simples para entrega inicial. Cliente exporta CSV e sobe via admin panel.
 - **Rate limit localStorage**: verificação de email no request, contador diário reseta à meia-noite automático no Supabase
@@ -443,28 +453,102 @@ Quando pronto para entrega, envie ao cliente:
 
 ---
 
-## Logs de Mudanças (2026-04-08)
+## Ambientes
 
-### Implementado
+### Desenvolvimento (localhost)
+```bash
+# Terminal 1 - Frontend
+cd frontend && npm run dev
+# Acessa: http://localhost:5173
+# API: http://localhost:3001
+
+# Terminal 2 - Backend
+cd backend && npm run dev
+# Servidor: http://localhost:3001
+```
+
+Usa `.env.development` com `VITE_API_URL=http://localhost:3001`
+
+### Produção (Railway + Vercel)
+- **Frontend:** Vercel → https://luiza-dosimetria-ia.vercel.app
+- **Backend:** Railway → https://luizadosimetriaia-production.up.railway.app
+- **Variáveis Railway:**
+  - `GOOGLE_SERVICE_ACCOUNT_B64` — credencial do Google (base64, no ambiente)
+  - `FRONTEND_URL` — URL do frontend para CORS (`https://luiza-dosimetria-ia.vercel.app`)
+  - Demais variáveis: `AI_PROVIDER`, `GOOGLE_API_KEY`, `OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`
+
+Deploy automático: push em `main` → GitHub webhook → Vercel/Railway redeploy
+
+---
+
+## Logs de Mudanças
+
+### 2026-04-10 — Migração para pgvector e Deploy em Produção
+- ✅ Migração de embeddings: JSON → Supabase pgvector
+  - Criou tabelas `document_chunks` + `sync_state`
+  - Função SQL `match_documents()` para busca vetorial
+  - 82 chunks de 5 documentos sincronizados
+- ✅ Deploy completo em produção
+  - Frontend: Vercel (CI/CD automático via GitHub)
+  - Backend: Railway ($5/mês Hobby plan, suficiente para 300 alunos)
+  - Credenciais do Google: armazenadas como variável de ambiente (base64)
+  - CORS dinâmico: localhost + produção
+  - Environment variables: `.env.development` (dev) e `.env.production` (prod)
+- ✅ Testes em produção: RAG, autenticação, histórico funcionando
+
+### 2026-04-09 — Logo e Configuração de Deploy
+- ✅ Logo `Logo_dourada.svg` adicionada
+  - LoginPage (sem círculo)
+  - Favicon
+- ✅ Configuração Vercel
+  - `vercel.json` com rewrite para SPA
+  - Variáveis de ambiente por ambiente
+- ✅ Configuração Railway
+  - `railway.json` (build + start commands)
+  - Dockerfile com Node.js alpine
+  - Root directory: `ia-dosimetria/backend`
+
+### 2026-04-08 — Inicial
 - ✅ Melhorias no formatação do prompt (espaçamento duplo, separadores)
 - ✅ Supabase full setup (4 tabelas + índices)
 - ✅ Autenticação por email com role (student/admin)
 - ✅ Rate limit 40 req/dia por aluno
 - ✅ Histórico persistido (conversas + mensagens)
-- ✅ Tela de login com placeholder para logo
+- ✅ Tela de login com logo
 - ✅ Botão logout no header
 - ✅ Admin panel: importação de CSV de alunos
 - ✅ Correção de erro do Gemini com histórico
 - ✅ Scripts de setup (`setup-db`, `add-student`)
 - ✅ Documento de setup para cliente (SETUP_CLIENTE.md)
 
-### 4. Custos
-- **Chat com IA**: Google Gemini (free tier 1.500 req/min) — **GRATUITO**
-- **Embeddings**: OpenAI `text-embedding-3-small` (~$0.02 por 1M tokens)
-- **Supabase**: plano free até ~3 GB banco + 2 projetos
-- **Para 300 alunos × 40 consultas/dia = 12.000 req/dia**
-  - Gemini: **grátis** no free tier (1.500 req/min = 2.160.000 req/dia possíveis)
-  - Embeddings (sync inicial): ~$0.02 (único)
-  - Embeddings (busca no chat): ~$0.0001 por pergunta (~$1.2/mês)
-  - Supabase: **grátis** (plano gratuito suficiente)
-- **Custo mensal estimado: ~$1-2/mês** (apenas embeddings)
+### Custos de Infraestrutura
+
+**Production:**
+- **Vercel (Frontend):** **GRATUITO** (plano Hobby)
+  - Deploy automático via GitHub
+  - Domínio customizado + SSL
+  - Builds ilimitados
+  
+- **Railway (Backend):** **$5/mês** (Hobby plan)
+  - Inclui $5 de crédito mensal
+  - ~$2.50/mês de consumo real (vCPU + RAM)
+  - Suporta 300 alunos × 40 req/dia sem problemas
+  - 7-day log history
+
+- **Supabase (Database):** **GRATUITO** (free tier)
+  - 500 MB storage (suficiente para histórico + embeddings)
+  - Unlimited API calls
+  - pgvector nativo incluído
+
+**APIs (custos recorrentes):**
+- **Google Gemini:** **GRATUITO** (1.500 req/min free tier)
+  - 300 alunos × 40 req/dia = ~12.000 req/dia (bem abaixo do limite)
+  
+- **OpenAI (Embeddings):** ~**$1-2/mês**
+  - `text-embedding-3-small`: $0.02 por 1M tokens
+  - Sync inicial: ~$0.02 (único)
+  - Busca no chat: ~$0.0001 por pergunta
+
+**Total mensal: ~$6-7/mês** (Railway + OpenAI embeddings)
+
+Para cliente: **R$6.000 inicial** + **R$300-500/mês manutenção**
