@@ -4,7 +4,7 @@ import { Sidebar } from '../components/Layout/Sidebar';
 import { ChatBox } from '../components/Chat/ChatBox';
 import { InputArea } from '../components/Chat/InputArea';
 
-const API_URL = 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
 interface Message {
   id: string;

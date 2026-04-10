@@ -27,7 +27,8 @@ export function ImportModal({ onClose }: ImportModalProps) {
 
     try {
       const email = localStorage.getItem('studentEmail') ?? '';
-      const res = await fetch('http://localhost:3001/api/admin/import-students', {
+      const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
+      const res = await fetch(`${API_URL}/api/admin/import-students`, {
         method: 'POST',
         headers: { 'x-student-email': email },
         body: formData,
