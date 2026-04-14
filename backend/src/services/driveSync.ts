@@ -5,7 +5,7 @@ import * as path from 'path';
 const pdfParse = require('pdf-parse');
 import mammoth from 'mammoth';
 
-const FOLDER_ID = '1Ph8E2tfFJn4SiUl8QvhShX6IEKhuyA8p';
+const FOLDER_ID = '1WJLDXfm-P0sBtZ3PXKL-o0-rCxgmMEZI';
 const CREDENTIALS_PATH = path.join(__dirname, '../../credentials/google-service-account.json');
 
 function getAuthClient() {

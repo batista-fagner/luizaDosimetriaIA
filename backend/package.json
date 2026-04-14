@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "setup-db": "ts-node scripts/setup-db.ts",
-    "add-student": "ts-node scripts/add-student.ts"
+    "add-student": "ts-node scripts/add-student.ts",
+    "promote-admin": "ts-node scripts/promote-admin.ts"
   },
   "keywords": [],
   "author": "",
