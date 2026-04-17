@@ -75,6 +75,23 @@ CREATE TABLE IF NOT EXISTS sync_state (
 -- Índices
 CREATE INDEX IF NOT EXISTS usage_email_date_idx ON usage (student_email, created_at);
 CREATE INDEX IF NOT EXISTS messages_conversation_idx ON messages (conversation_id, created_at);
+
+-- Função para busca vetorial (RAG)
+CREATE OR REPLACE FUNCTION match_documents(query_embedding vector, match_threshold float, match_count int)
+RETURNS TABLE(source text, chunk_index integer, text text, similarity float)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT
+    dc.source,
+    dc.chunk_index,
+    dc.text,
+    (1 - (dc.embedding <=> query_embedding)) as similarity
+  FROM document_chunks dc
+  WHERE (1 - (dc.embedding <=> query_embedding)) > match_threshold
+  ORDER BY dc.embedding <=> query_embedding
+  LIMIT match_count;
+$$;
 `;
 
 async function main() {
@@ -99,6 +116,7 @@ async function main() {
     console.log('   - Tabela: document_chunks (para RAG)');
     console.log('   - Tabela: sync_state (rastreamento)');
     console.log('   - Extensão: pgvector');
+    console.log('   - Função: match_documents() para busca vetorial');
     console.log('   - Índices criados');
   } catch (err) {
     console.error('❌ Erro ao configurar banco:', err);

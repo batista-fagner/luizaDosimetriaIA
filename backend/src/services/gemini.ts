@@ -78,7 +78,8 @@ export async function streamChatCompletion(
   messages: ChatMessage[],
   onChunk: (chunk: string) => void
 ): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  // const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
 
   // Garante que o histórico começa com 'user' e alterna corretamente (requisito do Gemini)
   const rawHistory = messages.slice(0, -1);
