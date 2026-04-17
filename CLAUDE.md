@@ -6,7 +6,7 @@ Plataforma de IA especializada em dosimetria penal para uma advogada com 300 alu
 
 - **Frontend:** React 18 + TypeScript + Vite 5 + Tailwind CSS v3
 - **Backend:** Node.js + Express + TypeScript + ts-node + nodemon
-- **IA (Chat):** Google Gemini 2.5 Flash-Lite com streaming (SSE) — **gratuito**
+- **IA (Chat):** Google Gemini 3.1 Flash-Lite Preview com streaming (SSE) — **gratuito** (fallback: 2.5 Flash-Lite comentado em `gemini.ts`)
 - **IA (Chat Fallback):** OpenAI GPT-4o Mini
 - **Embeddings:** OpenAI `text-embedding-3-small`
 - **RAG:** Google Drive + Supabase pgvector (embeddings vetoriais)
@@ -120,6 +120,7 @@ PORT=3001
 | POST | `/api/chat` | Chat com streaming SSE + RAG |
 | GET | `/api/conversations` | Lista conversas do aluno |
 | GET | `/api/conversations/:id/messages` | Carrega mensagens de uma conversa |
+| DELETE | `/api/conversations/:id` | Apaga conversa e suas mensagens |
 | POST | `/api/admin/import-students` | Importa alunos via CSV (admin only) |
 | GET | `/api/admin/prompt` | Retorna prompt atual da IA (admin only) |
 | PUT | `/api/admin/prompt` | Salva novo prompt da IA (admin only) |
@@ -252,6 +253,7 @@ curl -X POST http://localhost:3001/api/sync \
 - [x] Mensagens carregadas do banco ao selecionar conversa anterior
 - [x] **Editor de Prompt** — página `/admin/prompt` para a cliente editar o prompt da IA sem código
 - [x] Botão "Prompt da IA" no header (visível só para admins)
+- [x] **Apagar conversas** — botão lixeira aparece ao hover na sidebar, remove do banco e da lista
 
 ### Backend
 - [x] Express + CORS + TypeScript
@@ -261,7 +263,7 @@ curl -X POST http://localhost:3001/api/sync \
 - [x] Rota GET `/api/conversations/:id/messages` — carrega mensagens
 - [x] Rota POST `/api/admin/import-students` — importa CSV (admin only)
 - [x] **IA Provider** com suporte a múltiplos modelos:
-  - [x] Google Gemini 2.5 Flash-Lite (padrão, gratuito)
+  - [x] Google Gemini 3.1 Flash-Lite Preview (padrão, gratuito) — 2.5 comentado para rollback fácil
   - [x] OpenAI GPT-4o Mini (fallback)
 - [x] System prompt especializado em dosimetria penal com formatação clara
   - [x] Duplo espaçamento entre parágrafos
@@ -271,7 +273,8 @@ curl -X POST http://localhost:3001/api/sync \
   - [x] Sincronização automática de arquivos do Drive
   - [x] Suporte a múltiplos formatos: PDF, Google Docs, DOCX, TXT
   - [x] Resolução de atalhos (shortcuts)
-  - [x] Divisão de documentos em chunks (800 caracteres com overlap)
+  - [x] Divisão de documentos em chunks (1500 caracteres com overlap de 200)
+  - [x] Sync incremental pula o download de arquivos já processados (economia de tempo)
 - [x] **Embeddings & Busca Vetorial:**
   - [x] Geração de embeddings com OpenAI `text-embedding-3-small`
   - [x] Armazenamento local em JSON
@@ -306,6 +309,7 @@ curl -X POST http://localhost:3001/api/sync \
 - [x] **Correção do Gemini:**
   - [x] Sanitiza histórico para começar com 'user' (requisito do Gemini)
   - [x] Suporta histórico carregado do Supabase sem erros
+- [x] Rota DELETE `/api/conversations/:id` — apaga conversa e mensagens
 - [x] Rota POST `/api/sync` com suporte a teste (fileLimit)
 - [x] Health check `/health`
 - [x] `.env.example` documentado
@@ -496,6 +500,22 @@ Deploy automático: push em `main` → GitHub webhook → Vercel/Railway redeplo
 ---
 
 ## Logs de Mudanças
+
+### 2026-04-16 — Apagar Conversas + Sync Incremental + Novo Modelo Gemini
+- ✅ Apagar conversas na sidebar
+  - Botão lixeira aparece ao hover em cada conversa
+  - Remove mensagens e conversa no Supabase
+  - Limpa chat se a conversa ativa for apagada
+  - Rota `DELETE /api/conversations/:id`
+- ✅ Sync incremental otimizado
+  - Agora pula o download de arquivos já processados (não só os embeddings)
+  - `driveSync.ts` recebe `skipSources` e ignora arquivos conhecidos
+- ✅ ChunkSize aumentado: 800 → 1500 chars, overlap 100 → 200
+  - Melhor contexto para PDFs longos (ex: 135 páginas)
+- ✅ FOLDER_ID atualizado para nova pasta do Drive com arquivos novos
+- ✅ Modelo Gemini atualizado: 2.5 Flash-Lite → 3.1 Flash-Lite Preview
+  - Versão 2.5 comentada em `gemini.ts` para rollback fácil
+- ✅ Função `match_documents()` adicionada ao `setup-db.ts`
 
 ### 2026-04-10 — Editor de Prompt da IA + Melhorias no Prompt
 - ✅ Prompt da IA reescrito com boas práticas (identidade, escopo, restrições, formato)
