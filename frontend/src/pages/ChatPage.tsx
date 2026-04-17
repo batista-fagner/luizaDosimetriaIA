@@ -197,7 +197,17 @@ export function ChatPage() {
 
   const handleSelectConversation = (id: string) => {
     handleSelect(id);
-    setSidebarOpen(false); // Fecha sidebar após selecionar (mobile)
+    setSidebarOpen(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await fetch(`${API_URL}/api/conversations/${id}`, { method: 'DELETE' });
+    } catch {
+      // silencioso
+    }
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+    if (activeId === id) setActiveId(null);
   };
 
   return (
@@ -224,6 +234,7 @@ export function ChatPage() {
             activeId={activeId}
             onSelect={handleSelectConversation}
             onNew={handleNew}
+            onDelete={handleDelete}
           />
         </div>
 

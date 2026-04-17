@@ -83,6 +83,12 @@ export async function getConversationMessages(conversationId: string) {
   return data ?? [];
 }
 
+export async function deleteConversation(conversationId: string): Promise<void> {
+  await supabase.from('messages').delete().eq('conversation_id', conversationId);
+  const { error } = await supabase.from('conversations').delete().eq('id', conversationId);
+  if (error) throw error;
+}
+
 export async function getSystemPromptFromDB(): Promise<string | null> {
   const { data, error } = await supabase
     .from('settings')

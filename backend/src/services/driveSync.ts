@@ -5,7 +5,7 @@ import * as path from 'path';
 const pdfParse = require('pdf-parse');
 import mammoth from 'mammoth';
 
-const FOLDER_ID = '1WJLDXfm-P0sBtZ3PXKL-o0-rCxgmMEZI';
+const FOLDER_ID = '1GC30x7F6j3ciydw00lufPDv45udeulwk';
 const CREDENTIALS_PATH = path.join(__dirname, '../../credentials/google-service-account.json');
 
 function getAuthClient() {
@@ -49,7 +49,7 @@ function cleanMarkdown(text: string): string {
     .replace(/`/g, '');   // Remove `code`
 }
 
-function chunkText(text: string, source: string, chunkSize = 800, overlap = 100): DocumentChunk[] {
+function chunkText(text: string, source: string, chunkSize = 1500, overlap = 200): DocumentChunk[] {
   const chunks: DocumentChunk[] = [];
   let start = 0;
   let index = 0;
@@ -118,11 +118,14 @@ async function extractText(
   }
 }
 
-export async function syncDriveDocuments(): Promise<DocumentChunk[]> {
+export async function syncDriveDocuments(skipSources?: Set<string>): Promise<DocumentChunk[]> {
   const auth = getAuthClient();
   const drive = google.drive({ version: 'v3', auth });
 
   console.log('[drive] Listando arquivos...');
+  if (skipSources && skipSources.size > 0) {
+    console.log('[drive] Sources já processados no sync_state:', [...skipSources]);
+  }
 
   const res = await drive.files.list({
     q: `'${FOLDER_ID}' in parents and trashed = false`,
@@ -137,6 +140,12 @@ export async function syncDriveDocuments(): Promise<DocumentChunk[]> {
 
   for (const file of files) {
     if (!file.id || !file.mimeType || !file.name) continue;
+
+    // Pula arquivos já processados no modo incremental
+    if (skipSources?.has(file.name)) {
+      console.log(`[drive] Pulando (já processado): ${file.name}`);
+      continue;
+    }
 
     let fileId = file.id;
     let mimeType = file.mimeType;

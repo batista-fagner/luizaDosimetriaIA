@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getStudentConversations, getConversationMessages } from '../services/supabase';
+import { getStudentConversations, getConversationMessages, deleteConversation } from '../services/supabase';
 
 const router = Router();
 
@@ -24,6 +24,17 @@ router.get('/:id/messages', async (req: Request, res: Response) => {
     return res.json(messages);
   } catch {
     return res.status(500).json({ error: 'Erro ao buscar mensagens.' });
+  }
+});
+
+// DELETE /api/conversations/:id
+router.delete('/:id', async (req: Request, res: Response) => {
+  const id = req.params['id'] as string;
+  try {
+    await deleteConversation(id);
+    return res.json({ ok: true });
+  } catch {
+    return res.status(500).json({ error: 'Erro ao deletar conversa.' });
   }
 });
 

@@ -43,9 +43,9 @@ async function saveChunks(chunks: EmbeddedChunk[]): Promise<void> {
 }
 
 export async function buildEmbeddings(fileLimit?: number, incrementalOnly = false): Promise<{ total: number; sources: string[]; newChunks: number }> {
-  let chunks = await syncDriveDocuments();
-
   const processedSources = await getProcessedSources();
+
+  let chunks = await syncDriveDocuments(incrementalOnly ? processedSources : undefined);
   const allSources = [...new Set(chunks.map((c) => c.source))];
 
   if (fileLimit) {
@@ -54,17 +54,16 @@ export async function buildEmbeddings(fileLimit?: number, incrementalOnly = fals
     console.log(`[embeddings] Limitado a ${fileLimit} arquivos para teste`);
   }
 
-  let newChunks = chunks;
-
   if (incrementalOnly) {
-    newChunks = chunks.filter((c) => !processedSources.has(c.source));
-    const newSources = new Set(newChunks.map((c) => c.source));
+    const newSources = new Set(chunks.map((c) => c.source));
     console.log(`[embeddings] Modo incremental: processando apenas ${newSources.size} arquivo(s) novos`);
-    if (newChunks.length === 0) {
+    if (chunks.length === 0) {
       console.log(`[embeddings] ℹ️ Nenhum arquivo novo encontrado`);
       return { total: 0, sources: [], newChunks: 0 };
     }
   }
+
+  const newChunks = chunks;
 
   console.log(`[embeddings] Gerando embeddings para ${newChunks.length} chunks...`);
 
