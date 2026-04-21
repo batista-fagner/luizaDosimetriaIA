@@ -29,7 +29,7 @@ export function ChatBox({ messages, isLoading = false }: ChatBoxProps) {
               Chat Jurídico — Dosimetria Penal
             </h2>
             <p className="text-gray-400 text-sm max-w-sm">
-              Tire suas dúvidas sobre cálculo de penas, circunstâncias agravantes, atenuantes e jurisprudência.
+              Tire suas dúvidas sobre dosimetria da pena, aperfeiçoe argumentos jurídicos e elabore peças processuais.
             </p>
           </div>
         ) : (
