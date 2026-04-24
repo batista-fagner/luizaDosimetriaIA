@@ -1,6 +1,7 @@
 {
   "rewrites": [
+    { "source": "/dralu/assets/:path*", "destination": "/assets/:path*" },
     { "source": "/dralu", "destination": "/index.html" },
-    { "source": "/dralu/(.*)", "destination": "/index.html" }
+    { "source": "/dralu/:path*", "destination": "/index.html" }
   ]
 }
