@@ -1,6 +1,8 @@
 {
   "rewrites": [
     { "source": "/dralu/assets/:path*", "destination": "/assets/:path*" },
+    { "source": "/dralu/Logo_dourada.svg", "destination": "/Logo_dourada.svg" },
+    { "source": "/dralu/Logo_branca.svg", "destination": "/Logo_branca.svg" },
     { "source": "/dralu", "destination": "/index.html" },
     { "source": "/dralu/:path*", "destination": "/index.html" }
   ]
