@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/dralu", "destination": "/index.html" },
     { "source": "/dralu/(.*)", "destination": "/index.html" }
   ]
 }
