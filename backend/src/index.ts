@@ -6,6 +6,7 @@ import syncRouter from './routes/sync';
 import authRouter from './routes/auth';
 import conversationsRouter from './routes/conversations';
 import adminRouter from './routes/admin';
+import webhooksRouter from './routes/webhooks';
 import { getActiveProvider } from './services/aiProvider';
 
 const app = express();
@@ -17,7 +18,12 @@ const allowedOrigins = [
 ].filter(Boolean) as string[];
 
 app.use(cors({ origin: allowedOrigins }));
-app.use(express.json());
+// Guarda o corpo bruto (rawBody) para validar a assinatura HMAC do webhook da Kiwify
+app.use(express.json({
+  verify: (req, _res, buf) => {
+    (req as any).rawBody = buf.toString('utf-8');
+  },
+}));
 
 // Health check
 app.get('/health', (_req, res) => {
@@ -30,6 +36,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api/conversations', conversationsRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/sync', syncRouter);
+app.use('/api/webhooks', webhooksRouter);
 
 app.listen(PORT, () => {
   console.log(`✅ Backend rodando em http://localhost:${PORT}`);
