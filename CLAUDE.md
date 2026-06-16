@@ -597,4 +597,39 @@ Deploy automático: push em `main` → GitHub webhook → Vercel/Railway redeplo
 
 **Total mensal: ~$6-7/mês** (Railway + OpenAI embeddings)
 
+---
+
+## 🔧 Troubleshooting — Lições Aprendidas
+
+### Problema: Railway não atualiza após mudar repositório GitHub (2026-06-16)
+
+**O que aconteceu:**
+- Mudou-se o repositório do backend de `batista-fagner/luizaDosimetriaIA` para `LuizaDr027/drluIA` no painel do Railway
+- Commit `435d8f8` (webhook Kiwify) foi feito no repositório novo da cliente
+- Railway continuava deployando commits antigos (`c9c018fd`, `67caa9aa`, `a8f770c1`) do repositório antigo
+- Perdi ~2 horas tentando forçar redeploys, limpar cache, etc
+
+**Causa raiz:**
+- Railway mostrava "Source Repo: LuizaDr027/drluIA" nas settings, mas internamente continuava usando o repositório pessoal
+- O webhook do GitHub → Railway provavelmente não estava sincronizado corretamente após a mudança
+
+**Solução:**
+```bash
+# Adicionar o repositório pessoal como um remote adicional
+git remote add personal https://github.com/batista-fagner/luizaDosimetriaIA.git
+
+# Fazer push também pro repositório pessoal
+git push personal main
+```
+
+**Por que funcionou:**
+- Railway estava de fato conectado ao repositório pessoal (não ao da cliente)
+- Ao fazer push para o repositório pessoal, o webhook disparou e forçou um novo deploy
+- O novo deploy pegou o commit `435d8f8` com o webhook Kiwify implementado
+
+**Lição aprendida:**
+- Quando há múltiplos repositórios (dev, cliente, produção), sempre manter ambos sincronizados durante o desenvolvimento
+- Railway pode levar um tempo para reconectar a um repositório diferente — melhor fazer push em ambos durante transição
+- Os logs de "Build Logs" do Railway mostram qual commit está sendo compilado — verificar ali quando houver dúvida
+
 Para cliente: **R$6.000 inicial** + **R$300-500/mês manutenção**
